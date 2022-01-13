@@ -1,31 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using PdfSharp.Drawing;
-using PdfSharp.Pdf;
-using System.Windows.Forms;
-using System.Runtime.InteropServices;
+﻿using Aspose.Pdf;
+using System;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Windows.Forms;
 using WIA;
-using Aspose.Pdf;
 
 namespace UPSkaner
 {
-    public partial class Form1 : Form
+    public partial class Skaner : Form
     {
-        static int color_mode = 1;
+        private static int color_mode = 1;
+        WIA.CommonDialog oknoSkanowania = new WIA.CommonDialog();
 
-        public Form1()
+        public Skaner()
         {
             InitializeComponent();
             RGB.Checked = true;
             zapis.SelectedIndex = 0;
-            wyswietl.Text = "200 DPI";
+            DPI.SelectedIndex = 2;
         }
 
         private void skanuj_Click(object sender, EventArgs e)
@@ -57,56 +49,10 @@ namespace UPSkaner
                 ustawRozdzielczosc(skan);
 
                 ImageFile obraz = skan.Transfer();
-                String sciezka = null;
-                SaveFileDialog okienko = new SaveFileDialog();
 
-                if (okienko.ShowDialog() == DialogResult.OK)
-                {
-                    sciezka = okienko.FileName;
-                    sciezka = sciezka.Split('.')[0];
-                    sciezka += zapis.SelectedItem;
-                    Console.WriteLine(sciezka);
-                }
-                else
-                {
-                    MessageBox.Show("Błędna ścieżka zapisu");
-                    return;
-                }
-
-                if (File.Exists(sciezka))
-                {
-                    File.Delete(sciezka);
-                }
-
-                if (zapis.SelectedItem == ".pdf")
-                {
-                    obraz.SaveFile(sciezka.Split('.')[0] + ".jpg");
-                    String sciezkaPomocnicza = sciezka.Split('.')[0] + ".jpg";
-
-                    Document dokument = new Document();
-                    Page strona = dokument.Pages.Add();
-                    Aspose.Pdf.Image obrazPomocniczy = new Aspose.Pdf.Image();
-                    obrazPomocniczy.File = (sciezkaPomocnicza);
-
-                    System.Drawing.Image wczytanyObraz = System.Drawing.Image.FromFile(sciezkaPomocnicza);
-                    int h = wczytanyObraz.Height;
-                    int w = wczytanyObraz.Width;
-                    strona.PageInfo.Height = (h);
-                    strona.PageInfo.Width = (w);
-                    strona.PageInfo.Margin.Bottom = (0);
-                    strona.PageInfo.Margin.Top = (0);
-                    strona.PageInfo.Margin.Right = (0);
-                    strona.PageInfo.Margin.Left = (0);
-
-                    strona.Paragraphs.Add(obrazPomocniczy);
-                    dokument.Save(sciezka);
-                    drukujSkan.ImageLocation = sciezkaPomocnicza;
-                }
-                else
-                {
-                    obraz.SaveFile(sciezka);
-                    drukujSkan.ImageLocation = sciezka;
-                }
+                File.Delete("skan.jpg");
+                obraz.SaveFile("skan.jpg");
+                drukujSkan.ImageLocation = "skan.jpg";
             }
             catch (COMException ex)
             {
@@ -116,6 +62,7 @@ namespace UPSkaner
 
         private void odswierz_Click(object sender, EventArgs e)
         {
+            skanery.Items.Clear();
             try
             {
                 var deviceManager = new DeviceManager();
@@ -132,6 +79,14 @@ namespace UPSkaner
             {
                 MessageBox.Show(ex.Message);
             };
+        }
+
+        private void systemowy_Click(object sender, EventArgs e)
+        {
+            var obraz = oknoSkanowania.ShowAcquireImage();
+            File.Delete("skan.jpg");
+            obraz.SaveFile("skan.jpg");
+            drukujSkan.ImageLocation = "skan.jpg";
         }
 
 
@@ -151,8 +106,8 @@ namespace UPSkaner
             const string WIA_HORIZONTAL_SCAN_RESOLUTION_DPI = "6147";
             const string WIA_VERTICAL_SCAN_RESOLUTION_DPI = "6148";
 
-            zmienOpcje(skan.Properties, WIA_HORIZONTAL_SCAN_RESOLUTION_DPI, rozdzielczosc.Value);
-            zmienOpcje(skan.Properties, WIA_VERTICAL_SCAN_RESOLUTION_DPI, rozdzielczosc.Value);
+            zmienOpcje(skan.Properties, WIA_HORIZONTAL_SCAN_RESOLUTION_DPI, int.Parse(DPI.SelectedItem.ToString()) );
+            zmienOpcje(skan.Properties, WIA_VERTICAL_SCAN_RESOLUTION_DPI, int.Parse(DPI.SelectedItem.ToString()));
         }
 
         private static void ustawKolor(IItem skan)
@@ -194,19 +149,54 @@ namespace UPSkaner
             }
         }
 
-
-        private void rozdzielczosc_ValueChanged(object sender, EventArgs e)
+        private void zapisz_Click(object sender, EventArgs e)
         {
-            if (rozdzielczosc.Value % 100 < 50)
+            String sciezka = null;
+            SaveFileDialog okienko = new SaveFileDialog();
+            System.Drawing.Image obraz = System.Drawing.Image.FromFile("skan.jpg");
+
+            if (okienko.ShowDialog() == DialogResult.OK)
             {
-                rozdzielczosc.Value -= rozdzielczosc.Value % 100;
+                sciezka = okienko.FileName;
+                sciezka = sciezka.Split('.')[0];
+                sciezka += zapis.SelectedItem;
+                Console.WriteLine(sciezka);
             }
             else
             {
-                rozdzielczosc.Value -= rozdzielczosc.Value % 100;
-                rozdzielczosc.Value += 100;
+                MessageBox.Show("Błędna ścieżka zapisu");
+                return;
             }
-            wyswietl.Text = rozdzielczosc.Value.ToString() + " DPI";
+
+            if (File.Exists(sciezka))
+            {
+                File.Delete(sciezka);
+            }
+
+            if (zapis.SelectedItem == ".pdf")
+            {
+                Document dokument = new Document();
+                Page strona = dokument.Pages.Add();
+                Aspose.Pdf.Image obrazPomocniczy = new Aspose.Pdf.Image();
+                obrazPomocniczy.File = ("skan.jpg");
+
+                int h = obraz.Height;
+                int w = obraz.Width;
+                strona.PageInfo.Height = (h);
+                strona.PageInfo.Width = (w);
+                strona.PageInfo.Margin.Bottom = (0);
+                strona.PageInfo.Margin.Top = (0);
+                strona.PageInfo.Margin.Right = (0);
+                strona.PageInfo.Margin.Left = (0);
+
+                strona.Paragraphs.Add(obrazPomocniczy);
+                dokument.Save(sciezka);
+            }
+            else
+            {
+                obraz.Save(sciezka);
+                drukujSkan.ImageLocation = sciezka;
+            }
         }
     }
 }
